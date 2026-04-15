@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Powerbuilding Tracker</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Powerbuilding" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0A0A0A; color: #F0F0F0; font-family: 'Bebas Neue', Impact, sans-serif; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+    .nav-btn { transition: all 0.15s; }
+    .nav-btn:hover { opacity: 0.8; }
+    .nav-btn.active { border-bottom: 2px solid #E8FF47; }
+    .day-card { transition: transform 0.15s, box-shadow 0.15s; cursor: pointer; }
+    .day-card:hover { transform: translateY(-2px); }
+    .set-row { transition: background 0.15s; }
+    .set-row:hover { background: rgba(255,255,255,0.03); }
+    input[type=number] { -moz-appearance: textfield; }
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .check-btn { transition: all 0.15s; cursor: pointer; }
+    .check-btn:hover { transform: scale(1.1); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const PLAN = {
+      "Day 1": {
+        label: "Upper – Bench Focus",
+        color: "#E8FF47",
+        exercises: [
+          { id: "bench",     name: "Bench Press",         type: "strength",    sets: 4, repRange: "4–6"    },
+          { id: "incline_db",name: "Incline DB Press",    type: "hypertrophy", sets: 3, repRange: "8–12"   },
+          { id: "cable_fly", name: "Cable Fly",           type: "hypertrophy", sets: 3, repRange: "12–15"  },
+          { id: "tri_push",  name: "Tricep Pushdowns",    type: "hypertrophy", sets: 3, repRange: "10–15"  },
+          { id: "lat_raise", name: "Lateral Raises",      type: "hypertrophy", sets: 3, repRange: "12–15"  },
+        ],
+      },
+      "Day 2": {
+        label: "Lower – Squat Focus",
+        color: "#FF6B47",
+        exercises: [
+          { id: "squat",    name: "Back Squat",       type: "strength",    sets: 4, repRange: "4–6"   },
+          { id: "leg_press",name: "Leg Press",        type: "hypertrophy", sets: 3, repRange: "10–15" },
+          { id: "leg_ext",  name: "Leg Extensions",   type: "hypertrophy", sets: 3, repRange: "12–15" },
+          { id: "ham_curl", name: "Hamstring Curl",   type: "hypertrophy", sets: 3, repRange: "10–15" },
+          { id: "calf_d2",  name: "Calf Raises",      type: "hypertrophy", sets: 4, repRange: "12–15" },
+        ],
+      },
+      "Day 4": {
+        label: "Upper – OHP & Back",
+        color: "#47C8FF",
+        exercises: [
+          { id: "ohp",      name: "Overhead Press",    type: "strength",    sets: 4, repRange: "4–6"   },
+          { id: "pull_ups", name: "Weighted Pull-Ups", type: "strength",    sets: 4, repRange: "5–6"   },
+          { id: "bb_row",   name: "Barbell Rows",      type: "hypertrophy", sets: 3, repRange: "8–10"  },
+          { id: "lat_pull", name: "Lat Pulldown",      type: "hypertrophy", sets: 3, repRange: "10–12" },
+          { id: "db_curl",  name: "DB Curls",          type: "hypertrophy", sets: 3, repRange: "10–12" },
+        ],
+      },
+      "Day 5": {
+        label: "Lower – Deadlift Focus",
+        color: "#B447FF",
+        exercises: [
+          { id: "deadlift",  name: "Deadlift",               type: "strength",    sets: 4, repRange: "3–5"    },
+          { id: "rdl",       name: "Romanian Deadlift",      type: "hypertrophy", sets: 3, repRange: "8–10"   },
+          { id: "hip_thrust",name: "Hip Thrust",             type: "hypertrophy", sets: 3, repRange: "8–12"   },
+          { id: "bss",       name: "Bulgarian Split Squat",  type: "hypertrophy", sets: 3, repRange: "8 each" },
+          { id: "calf_d5",   name: "Calf Raises",            type: "hypertrophy", sets: 4, repRange: "12–15"  },
+        ],
+      },
+    };
+
+    const KEY_LIFTS = ["bench", "squat", "ohp", "deadlift"];
+    const KEY_LIFT_NAMES = { bench: "Bench", squat: "Squat", ohp: "OHP", deadlift: "Deadlift" };
+    const STORAGE_KEY = "pb_tracker_v2";
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : { sessions: [], logs: {} };
+      } catch { return { sessions: [], logs: {} }; }
+    }
+    function saveData(d) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {}
+    }
+
+    function App() {
+      const [data, setData] = useState(loadData);
+      const [view, setView] = useState("home");
+      const [activeDay, setActiveDay] = useState(null);
+      const [sessionLog, setSessionLog] = useState({});
+      const [completedSets, setCompletedSets] = useState({});
+      const sessionDate = new Date().toISOString().split("T")[0];
+
+      useEffect(() => { saveData(data); }, [data]);
+
+      const getLastLog = (exId) => {
+        const logs = data.logs[exId];
+        if (!logs?.length) return null;
+        return logs[logs.length - 1];
+      };
+
+      const startSession = (day) => {
+        setActiveDay(day);
+        const prefill = {};
+        const completed = {};
+        PLAN[day].exercises.forEach(ex => {
+          const prev = getLastLog(ex.id);
+          prefill[ex.id] = Array.from({ length: ex.sets }, () => ({
+            weight: prev?.weight || "",
+            reps: prev?.reps || "",
+          }));
+          completed[ex.id] = Array(ex.sets).fill(false);
+        });
+        setSessionLog(prefill);
+        setCompletedSets(completed);
+        setView("session");
+      };
+
+      const updateSet = (exId, setIdx, field, value) => {
+        setSessionLog(prev => {
+          const updated = { ...prev };
+          updated[exId] = [...(updated[exId] || [])];
+          updated[exId][setIdx] = { ...updated[exId][setIdx], [field]: value };
+          return updated;
+        });
+      };
+
+      const toggleSet = (exId, setIdx) => {
+        setCompletedSets(prev => {
+          const updated = { ...prev };
+          updated[exId] = [...(updated[exId] || [])];
+          updated[exId][setIdx] = !updated[exId][setIdx];
+          return updated;
+        });
+      };
+
+      const finishSession = () => {
+        const newLogs = { ...data.logs };
+        Object.entries(sessionLog).forEach(([exId, sets]) => {
+          if (!newLogs[exId]) newLogs[exId] = [];
+          const best = sets.reduce((b, s) => {
+            const w = parseFloat(s.weight) || 0;
+            return w > b.weight ? { weight: w, reps: s.reps } : b;
+          }, { weight: 0, reps: "" });
+          if (best.weight > 0) {
+            newLogs[exId].push({ date: sessionDate, ...best, sets: sets.filter(s => s.weight) });
+          }
+        });
+        setData({ sessions: [...data.sessions, { day: activeDay, date: sessionDate }], logs: newLogs });
+        setView("home");
+      };
+
+      const getStreak = () => {
+        const dates = [...new Set(data.sessions.map(s => s.date))].sort().reverse();
+        if (!dates.length) return 0;
+        const today = new Date().toISOString().split("T")[0];
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+        if (dates[0] !== today && dates[0] !== yesterday) return 0;
+        let streak = 0;
+        for (let i = 0; i < dates.length - 1; i++) {
+          const diff = (new Date(dates[i]) - new Date(dates[i + 1])) / 86400000;
+          if (diff <= 2) streak++; else break;
+        }
+        return streak + 1;
+      };
+
+      const getProgress = (exId) => {
+        const logs = data.logs[exId] || [];
+        if (logs.length < 2) return null;
+        return ((logs[logs.length - 1].weight - logs[0].weight) / logs[0].weight * 100).toFixed(1);
+      };
+
+      const allExercises = Object.values(PLAN)
+        .flatMap(d => d.exercises)
+        .filter((ex, idx, arr) => arr.findIndex(e => e.id === ex.id) === idx);
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#0A0A0A", color: "#F0F0F0", fontFamily: "'Bebas Neue', Impact, sans-serif", letterSpacing: "0.02em" }}>
+
+          {/* HEADER */}
+          <div style={{ background: "#111", borderBottom: "1px solid #1E1E1E", padding: "16px 20px", position: "sticky", top: 0, zIndex: 100 }}>
+            <div style={{ maxWidth: 480, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 22, color: "#E8FF47", letterSpacing: 2 }}>POWERBUILDING</div>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "#555", letterSpacing: 1 }}>STRENGTH + SIZE TRACKER</div>
+              </div>
+              {view === "session" ? (
+                <button onClick={() => setView("home")} style={{ background: "transparent", border: "1px solid #333", color: "#888", padding: "6px 12px", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", fontSize: 12, borderRadius: 4 }}>← BACK</button>
+              ) : (
+                <div style={{ display: "flex", gap: 20 }}>
+                  {["home", "history", "progress"].map(v => (
+                    <button key={v} className={`nav-btn ${view === v ? "active" : ""}`} onClick={() => setView(v)} style={{ background: "transparent", border: "none", color: view === v ? "#F0F0F0" : "#555", cursor: "pointer", fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 1, paddingBottom: 4 }}>{v.toUpperCase()}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ maxWidth: 480, margin: "0 auto", padding: "20px 16px" }}>
+
+            {/* HOME */}
+            {view === "home" && (
+              <div>
+                <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+                  {[
+                    { label: "SESSIONS", val: data.sessions.length },
+                    { label: "STREAK",   val: `${getStreak()}d` },
+                    { label: "THIS WEEK",val: data.sessions.filter(s => new Date(s.date) > new Date(Date.now() - 7 * 86400000)).length },
+                  ].map(s => (
+                    <div key={s.label} style={{ flex: 1, background: "#111", border: "1px solid #1E1E1E", padding: "14px 10px", textAlign: "center", borderRadius: 8 }}>
+                      <div style={{ fontSize: 26, color: "#E8FF47" }}>{s.val}</div>
+                      <div style={{ fontFamily: "'DM Sans'", fontSize: 10, color: "#555", letterSpacing: 1 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#444", letterSpacing: 2, marginBottom: 12 }}>SELECT WORKOUT DAY</div>
+
+                {Object.entries(PLAN).map(([day, info]) => {
+                  const lastSession = data.sessions.filter(s => s.day === day).slice(-1)[0];
+                  return (
+                    <div key={day} className="day-card" onClick={() => startSession(day)} style={{ background: "#111", border: "1px solid #1E1E1E", borderLeft: `3px solid ${info.color}`, borderRadius: 10, padding: "18px 20px", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontSize: 20, color: info.color }}>{day}</div>
+                        <div style={{ fontFamily: "'DM Sans'", fontSize: 13, color: "#888", marginTop: 2 }}>{info.label}</div>
+                        <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#444", marginTop: 6 }}>
+                          {info.exercises.length} exercises{lastSession && <span style={{ marginLeft: 8, color: "#555" }}>· last {lastSession.date}</span>}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 28, color: "#333" }}>›</div>
+                    </div>
+                  );
+                })}
+
+                <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#444", letterSpacing: 2, marginTop: 28, marginBottom: 12 }}>CURRENT MAXES</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {KEY_LIFTS.map(id => {
+                    const last = getLastLog(id);
+                    return (
+                      <div key={id} style={{ background: "#111", border: "1px solid #1E1E1E", borderRadius: 8, padding: "14px 16px" }}>
+                        <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#555", letterSpacing: 1 }}>{KEY_LIFT_NAMES[id]}</div>
+                        <div style={{ fontSize: 26, color: "#F0F0F0", marginTop: 4 }}>{last ? `${last.weight}lb` : "—"}</div>
+                        {last && <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#444" }}>{last.reps} reps · {last.date}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* SESSION */}
+            {view === "session" && activeDay && (
+              <div>
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ fontSize: 32, color: PLAN[activeDay].color }}>{activeDay}</div>
+                  <div style={{ fontFamily: "'DM Sans'", fontSize: 14, color: "#666" }}>{PLAN[activeDay].label} · {sessionDate}</div>
+                </div>
+
+                {PLAN[activeDay].exercises.map((ex) => {
+                  const sets = sessionLog[ex.id] || [];
+                  const done = (completedSets[ex.id] || []).filter(Boolean).length;
+                  const allDone = done === ex.sets;
+                  return (
+                    <div key={ex.id} style={{ background: "#111", border: "1px solid #1E1E1E", borderRadius: 10, marginBottom: 14, overflow: "hidden" }}>
+                      <div style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1A1A1A", background: allDone ? "rgba(232,255,71,0.05)" : "transparent" }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 8, padding: "2px 6px", borderRadius: 2, background: ex.type === "strength" ? "#E8FF4720" : "#ffffff10", color: ex.type === "strength" ? "#E8FF47" : "#666", fontFamily: "'DM Sans'", letterSpacing: 1 }}>{ex.type.toUpperCase()}</span>
+                            <span style={{ fontSize: 16 }}>{ex.name}</span>
+                          </div>
+                          <div style={{ fontFamily: "'DM Sans'", fontSize: 12, color: "#555", marginTop: 3 }}>{ex.sets} sets · {ex.repRange} reps</div>
+                        </div>
+                        <div style={{ fontFamily: "'DM Sans'", fontSize: 12, color: allDone ? "#E8FF47" : "#444" }}>{done}/{ex.sets}</div>
+                      </div>
+
+                      <div style={{ padding: "10px 16px" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "24px 1fr 1fr 36px", gap: 8, marginBottom: 6 }}>
+                          <div />
+                          <div style={{ fontFamily: "'DM Sans'", fontSize: 10, color: "#444", letterSpacing: 1 }}>WEIGHT (lb)</div>
+                          <div style={{ fontFamily: "'DM Sans'", fontSize: 10, color: "#444", letterSpacing: 1 }}>REPS</div>
+                          <div />
+                        </div>
+                        {Array.from({ length: ex.sets }).map((_, si) => {
+                          const s = sets[si] || {};
+                          const checked = completedSets[ex.id]?.[si] || false;
+                          return (
+                            <div key={si} className="set-row" style={{ display: "grid", gridTemplateColumns: "24px 1fr 1fr 36px", gap: 8, alignItems: "center", padding: "4px 0", borderRadius: 6, opacity: checked ? 0.6 : 1 }}>
+                              <div style={{ fontFamily: "'DM Sans'", fontSize: 12, color: "#444", textAlign: "center" }}>{si + 1}</div>
+                              <input type="number" placeholder="—" value={s.weight || ""} onChange={e => updateSet(ex.id, si, "weight", e.target.value)}
+                                style={{ background: "#0A0A0A", border: "1px solid #222", borderRadius: 6, color: "#F0F0F0", padding: "8px 10px", fontSize: 14, fontFamily: "'DM Sans'", width: "100%", outline: "none" }} />
+                              <input type="number" placeholder="—" value={s.reps || ""} onChange={e => updateSet(ex.id, si, "reps", e.target.value)}
+                                style={{ background: "#0A0A0A", border: "1px solid #222", borderRadius: 6, color: "#F0F0F0", padding: "8px 10px", fontSize: 14, fontFamily: "'DM Sans'", width: "100%", outline: "none" }} />
+                              <button className="check-btn" onClick={() => toggleSet(ex.id, si)} style={{ width: 32, height: 32, borderRadius: 6, background: checked ? "#E8FF47" : "#1A1A1A", border: "none", color: checked ? "#000" : "#444", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <button onClick={finishSession} style={{ width: "100%", padding: "16px", background: "#E8FF47", color: "#000", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: "'Bebas Neue'", fontSize: 20, letterSpacing: 2, marginTop: 8 }}>FINISH SESSION</button>
+              </div>
+            )}
+
+            {/* HISTORY */}
+            {view === "history" && (
+              <div>
+                <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#444", letterSpacing: 2, marginBottom: 16 }}>SESSION HISTORY</div>
+                {data.sessions.length === 0 && (
+                  <div style={{ fontFamily: "'DM Sans'", color: "#444", textAlign: "center", marginTop: 60 }}>No sessions yet. Start lifting!</div>
+                )}
+                {[...data.sessions].reverse().map((s, i) => (
+                  <div key={i} style={{ background: "#111", border: "1px solid #1E1E1E", borderLeft: `3px solid ${PLAN[s.day]?.color || "#333"}`, borderRadius: 8, padding: "14px 16px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 18, color: PLAN[s.day]?.color }}>{s.day}</div>
+                      <div style={{ fontFamily: "'DM Sans'", fontSize: 12, color: "#666" }}>{PLAN[s.day]?.label}</div>
+                    </div>
+                    <div style={{ fontFamily: "'DM Sans'", fontSize: 12, color: "#555" }}>{s.date}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* PROGRESS */}
+            {view === "progress" && (
+              <div>
+                <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#444", letterSpacing: 2, marginBottom: 16 }}>LIFT PROGRESSION</div>
+                {allExercises.map(ex => {
+                  const logs = data.logs[ex.id] || [];
+                  if (!logs.length) return null;
+                  const pct = getProgress(ex.id);
+                  const max = Math.max(...logs.map(l => l.weight));
+                  return (
+                    <div key={ex.id} style={{ background: "#111", border: "1px solid #1E1E1E", borderRadius: 10, padding: "16px", marginBottom: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                        <div>
+                          <div style={{ fontSize: 18 }}>{ex.name}</div>
+                          <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#555" }}>{logs.length} sessions logged</div>
+                        </div>
+                        {pct !== null && (
+                          <div style={{ fontFamily: "'DM Sans'", fontSize: 12, padding: "4px 10px", borderRadius: 6, background: parseFloat(pct) >= 0 ? "#E8FF4720" : "#FF6B4720", color: parseFloat(pct) >= 0 ? "#E8FF47" : "#FF6B47" }}>
+                            {parseFloat(pct) >= 0 ? "+" : ""}{pct}%
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 48, marginBottom: 8 }}>
+                        {logs.slice(-12).map((l, i, arr) => {
+                          const h = max > 0 ? (l.weight / max) * 100 : 0;
+                          return (
+                            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                              <div style={{ width: "100%", height: `${h}%`, minHeight: 4, background: i === arr.length - 1 ? "#E8FF47" : "#2A2A2A", borderRadius: 3 }} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#444" }}>Start: {logs[0].weight}lb</div>
+                        <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#E8FF47" }}>Best: {max}lb</div>
+                      </div>
+                    </div>
+                  );
+                }).filter(Boolean)}
+                {!Object.values(data.logs).some(l => l.length > 0) && (
+                  <div style={{ fontFamily: "'DM Sans'", color: "#444", textAlign: "center", marginTop: 60 }}>Log some sessions to see your progress!</div>
+                )}
+              </div>
+            )}
+
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
