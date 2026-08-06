@@ -1,9 +1,0 @@
-.plan-import{padding:16px;margin-bottom:22px}
-.plan-import p{color:#aaa;font-size:13px;line-height:1.5;margin:0 0 13px}
-.import-status{margin-top:12px;padding:10px 12px;border:1px solid #303030;border-radius:10px;color:#ddd;font-size:12px}
-.import-preview{margin-top:12px;display:grid;gap:10px}
-.import-day{padding:12px;border-radius:12px;background:#111;border:1px solid #242424;display:grid;gap:5px}
-.import-day strong{font-size:14px}
-.import-day span{font-size:12px;color:#aaa}
-.import-actions{display:flex;gap:8px;margin-top:4px}
-.import-note{margin-top:12px;line-height:1.45}
