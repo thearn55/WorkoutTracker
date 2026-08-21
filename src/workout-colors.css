@@ -1,0 +1,8 @@
+.session-header{border-bottom:1px solid color-mix(in srgb,var(--workout-color) 45%,#1f1f1f)!important;box-shadow:0 8px 28px color-mix(in srgb,var(--workout-color) 12%,transparent)}
+.session-header .exit-workout{border-color:color-mix(in srgb,var(--workout-color) 55%,#333)!important;color:var(--workout-color)!important}
+.session-main .accent{background:var(--workout-color)!important;color:#050505!important}
+.session-main input:focus,.session-main select:focus,.session-main textarea:focus{border-color:var(--workout-color)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--workout-color) 15%,transparent)}
+.session-main .card{border-color:color-mix(in srgb,var(--workout-color) 18%,#222)}
+.session-main .exercise-progress-grid>div{border-color:color-mix(in srgb,var(--workout-color) 22%,#202020)}
+.session-main .exercise-progress-grid span{color:var(--workout-color)}
+.session-main .rest-banner{box-shadow:0 6px 24px color-mix(in srgb,var(--workout-color) 22%,transparent)}
